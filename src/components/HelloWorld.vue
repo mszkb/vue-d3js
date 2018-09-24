@@ -1,58 +1,220 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
-  </div>
+    <svg width="960" height="500" ref="svg"></svg>
 </template>
 
 <script>
-export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
+  import * as d3 from "d3";
+
+  const nodes = [
+    {"id": 0, "label": "i0", "layer": 1, "connection": [2, 6]},
+    {"id": 1, "label": "i1", "layer": 1, "connection": [4, 5, 6]},
+    {"id": 2, "label": "h0", "layer": 2,},
+    {"id": 3, "label": "i2", "layer": 1},
+    {"id": 4, "label": "h1", "layer": 2},
+    {"id": 5, "label": "h2", "layer": 2, "connection": [7]},
+    {"id": 6, "label": "h3", "layer": 2, "connection": [7]},
+    {"id": 7, "label": "o0", "layer": 3}
+  ]
+
+  const width = 960,
+    height = 500,
+    nodeSize = 30;
+
+  export default {
+    name: 'HelloWorld',
+    props: {
+      msg: String
+    },
+    mounted: function () {
+
+      let svg = d3.select(this.$el)
+      let color = d3.scaleOrdinal(d3.schemeCategory10)
+
+      const netsize = {}
+      nodes.forEach((d) => {
+        if (d.layer in netsize) {
+          netsize[d.layer] += 1
+        } else {
+          netsize[d.layer] = 1
+        }
+        d["lidx"] = netsize[d.layer]
+        d["connection"] = d.connection
+      })
+
+      let largestLayerSize = Math.max.apply(null, Object.keys(netsize).map((i) => {
+        return netsize[i]
+      }))
+      let xdist = width / Object.keys(netsize).length
+      let ydist = height / largestLayerSize
+
+      // Position von allen orbs - Layer fuer Layer
+      // jeder Layer faengt oben an und die nodes haben 0.5 Abstand untereinander
+      nodes.map((d) => {
+        d["x"] = (d.layer - 0.5) * xdist
+        d["y"] = (d.lidx - 0.5) * ydist
+      })
+
+      let links = []
+      nodes.map(function (d, i) {
+        for (let n in nodes) {
+          if (d.layer + 1 == nodes[n].layer) {
+            // parseInt(n) is the target on the next layer
+            // determine if two nodes are related:
+            //  datastructure needs an ID
+
+            let connected = false
+            if(d.connection !== undefined) {
+              connected = d.connection.includes(parseInt(n))
+            }
+
+            links.push({
+              "source": parseInt(i),
+              "target": parseInt(n),
+              "sourceLabel": nodes[i].label,
+              "targetLabel": nodes[n].label,
+              "value": 1,
+              "connected": connected
+            })
+          }
+        }
+      })
+
+      let link = svg.selectAll(".link")
+        .data(links)
+        .enter().append("line")
+        .attr("class", function (d) {
+          return `${d.sourceLabel} ${d.targetLabel} link`
+        })
+        .attr("x1", function (d) {
+          return nodes[d.source].x
+        })
+        .attr("y1", function (d) {
+          return nodes[d.source].y
+        })
+        .attr("x2", function (d) {
+          return nodes[d.target].x
+        })
+        .attr("y2", function (d) {
+          return nodes[d.target].y
+        })
+
+      let node = svg.selectAll(".node")
+        .data(nodes)
+        .enter().append("g")
+        .attr("transform", function (d) {
+          return `translate(${d.x}, ${d.y})`
+        })
+
+
+      function recursiveActive (e) {
+        if (e.connection === undefined)
+          return
+
+        console.log(e)
+
+        e.connection.map((x) => {
+          console.log(nodes[x])
+          console.log(`${e.label}.${nodes[x].label}`)
+          d3.selectAll(`.${e.label}.${nodes[x].label}`).classed('active', true)
+          recursiveActive(nodes[x])
+        })
+      }
+
+      let circle = node.append("circle")
+        .attr("class", function (d) {
+
+          console.log("MAP")
+          let availableLinks = links.filter((x) => {
+            return x.source === d.id && x.connected
+          })
+
+          let CSSclasses = []
+          availableLinks.map((x) => {
+            CSSclasses.push(x.sourceLabel)
+            CSSclasses.push(x.targetLabel)
+          })
+
+          return CSSclasses.join(" ")
+        })
+        .attr("r", nodeSize)
+        .style("fill", function (d) {
+          return color(d.layer)
+        })
+        .on("click", function (e) {
+          d3.selectAll('.active').classed('active', false)
+          recursiveActive(e)
+        })
+
+      node.append("text")
+        .attr("dx", "-.35em")
+        .attr("dy", ".35em")
+        .text(function (d) {
+          return d.label
+        })
+    },
+    methods: {
+      recursivePath() {
+        console.log('hi')
+      }
+    }
   }
-}
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
+<style>
+
+    @keyframes lineMove {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+    line {
+
+    }
+
+    h3 {
+        margin: 40px 0 0;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    li {
+        display: inline-block;
+        margin: 0 10px;
+    }
+
+    a {
+        color: #42b983;
+    }
+
+    text {
+        pointer-events: none;
+    }
+
+    .node:hover {
+        stroke: #999;
+        stroke-opacity: .6;
+        stroke-width: 4px;
+    }
+
+    .link {
+        stroke: #999;
+        stroke-opacity: .6;
+        stroke-width: 2;
+    }
+
+    .active {
+        stroke: #ff0000;
+
+    }
+
+    line.active {
+        stroke-dashoffset: 105;
+        stroke-dasharray: 33, 2;
+        animation: lineMove 2s infinite linear;
+    }
+
 </style>
