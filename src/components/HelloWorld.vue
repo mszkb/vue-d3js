@@ -1,5 +1,5 @@
 <template>
-    <svg width="960" height="500" ref="svg"></svg>
+  <svg width="960" height="500" ref="svg"></svg>
 </template>
 
 <script>
@@ -16,18 +16,27 @@
     {"id": 7, "label": "o0", "layer": 3}
   ]
 
-  const width = 960,
-    height = 500,
-    nodeSize = 30;
+  const nodeSize = 30;
 
   export default {
     name: 'HelloWorld',
     props: {
       msg: String
     },
+    data () {
+      return {
+        svg: null
+      }
+    },
     mounted: function () {
+      var margin = {top: -5, right: -5, bottom: -5, left: -5},
+        width = 960 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
 
-      let svg = d3.select(this.$el)
+      let svg = d3.select(this.$el).call(d3.zoom().on("zoom", function () {
+        svg.attr("transform", d3.event.transform)
+      }))
+      this.$data.svg = svg
       let color = d3.scaleOrdinal(d3.schemeCategory10)
 
       const netsize = {}
@@ -63,7 +72,7 @@
             //  datastructure needs an ID
 
             let connected = false
-            if(d.connection !== undefined) {
+            if (d.connection !== undefined) {
               connected = d.connection.includes(parseInt(n))
             }
 
@@ -79,7 +88,7 @@
         }
       })
 
-      let link = svg.selectAll(".link")
+      svg.selectAll(".link")
         .data(links)
         .enter().append("line")
         .attr("class", function (d) {
@@ -106,24 +115,18 @@
         })
 
 
-      function recursiveActive (e) {
+      function recursiveActive(e) {
         if (e.connection === undefined)
           return
 
-        console.log(e)
-
         e.connection.map((x) => {
-          console.log(nodes[x])
-          console.log(`${e.label}.${nodes[x].label}`)
           d3.selectAll(`.${e.label}.${nodes[x].label}`).classed('active', true)
           recursiveActive(nodes[x])
         })
       }
 
-      let circle = node.append("circle")
+      node.append("circle")
         .attr("class", function (d) {
-
-          console.log("MAP")
           let availableLinks = links.filter((x) => {
             return x.source === d.id && x.connected
           })
@@ -153,9 +156,6 @@
         })
     },
     methods: {
-      recursivePath() {
-        console.log('hi')
-      }
     }
   }
 </script>
@@ -163,58 +163,59 @@
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style>
 
-    @keyframes lineMove {
-        to {
-            stroke-dashoffset: 0;
-        }
+  @keyframes lineMove {
+    to {
+      stroke-dashoffset: 0;
     }
-    line {
+  }
 
-    }
+  line {
 
-    h3 {
-        margin: 40px 0 0;
-    }
+  }
 
-    ul {
-        list-style-type: none;
-        padding: 0;
-    }
+  h3 {
+    margin: 40px 0 0;
+  }
 
-    li {
-        display: inline-block;
-        margin: 0 10px;
-    }
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
 
-    a {
-        color: #42b983;
-    }
+  li {
+    display: inline-block;
+    margin: 0 10px;
+  }
 
-    text {
-        pointer-events: none;
-    }
+  a {
+    color: #42b983;
+  }
 
-    .node:hover {
-        stroke: #999;
-        stroke-opacity: .6;
-        stroke-width: 4px;
-    }
+  text {
+    pointer-events: none;
+  }
 
-    .link {
-        stroke: #999;
-        stroke-opacity: .6;
-        stroke-width: 2;
-    }
+  .node:hover {
+    stroke: #999;
+    stroke-opacity: .6;
+    stroke-width: 4px;
+  }
 
-    .active {
-        stroke: #ff0000;
+  .link {
+    stroke: #999;
+    stroke-opacity: .6;
+    stroke-width: 2;
+  }
 
-    }
+  .active {
+    stroke: #ff0000;
 
-    line.active {
-        stroke-dashoffset: 105;
-        stroke-dasharray: 33, 2;
-        animation: lineMove 2s infinite linear;
-    }
+  }
+
+  line.active {
+    stroke-dashoffset: 105;
+    stroke-dasharray: 33, 2;
+    animation: lineMove 2s infinite linear;
+  }
 
 </style>
