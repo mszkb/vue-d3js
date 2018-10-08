@@ -66,7 +66,7 @@
       let links = []
       nodes.map(function (d, i) {
         for (let n in nodes) {
-          if (d.layer + 1 == nodes[n].layer) {
+          if (d.layer + 1 === nodes[n].layer) {
             // parseInt(n) is the target on the next layer
             // determine if two nodes are related:
             //  datastructure needs an ID
